@@ -78,16 +78,26 @@ contract PuppyRaffle is ERC721, Ownable {
     /// @param newPlayers the list of players to enter the raffle
     function enterRaffle(address[] memory newPlayers) public payable {
         require(msg.value == entranceFee * newPlayers.length, "PuppyRaffle: Must send enough to enter raffle");
+
+        // Check for duplicates within the newPlayers array
+        for (uint256 i = 0; i < newPlayers.length; i++) {
+            for (uint256 j = i + 1; j < newPlayers.length; j++) {
+                require(newPlayers[i] != newPlayers[j], "PuppyRaffle: Duplicate player in input");
+            }
+        }
+
+        // Check for duplicates against existing players
+        for (uint256 i = 0; i < newPlayers.length; i++) {
+            for (uint256 j = 0; j < players.length; j++) {
+                require(newPlayers[i] != players[j], "PuppyRaffle: Player already entered");
+            }
+        }
+
+        // Add new players to the players array
         for (uint256 i = 0; i < newPlayers.length; i++) {
             players.push(newPlayers[i]);
         }
 
-        // Check for duplicates
-        for (uint256 i = 0; i < players.length - 1; i++) {
-            for (uint256 j = i + 1; j < players.length; j++) {
-                require(players[i] != players[j], "PuppyRaffle: Duplicate player");
-            }
-        }
         emit RaffleEnter(newPlayers);
     }
 
@@ -98,10 +108,14 @@ contract PuppyRaffle is ERC721, Ownable {
         require(playerAddress == msg.sender, "PuppyRaffle: Only the player can refund");
         require(playerAddress != address(0), "PuppyRaffle: Player already refunded, or is not active");
 
-        payable(msg.sender).sendValue(entranceFee);
+        // MOOSE 
+        //payable(msg.sender).sendValue(entranceFee);
 
         players[playerIndex] = address(0);
         emit RaffleRefunded(playerAddress);
+        // FIX
+        // Move the thing over so its not reentrant.
+        payable(msg.sender).sendValue(entranceFee);
     }
 
     /// @notice a way to get the index in the array
